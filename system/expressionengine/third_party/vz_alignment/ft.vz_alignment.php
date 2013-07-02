@@ -121,6 +121,8 @@ class Vz_alignment_ft extends EE_Fieldtype {
     {
         ee()->load->helper('form');
 
+        $settings = array_merge($this->settings, $settings);
+
         $row1 = array(
             lang('direction_label_cell'),
             form_dropdown('direction', $this->_directions(), $settings['direction'])
@@ -151,12 +153,6 @@ class Vz_alignment_ft extends EE_Fieldtype {
 
 
     // --------------------------------------------------------------------
-
-
-    function pre_process($data)
-    {
-        return explode('|', $data);
-    }
 
     /**
      * Display Field
@@ -220,50 +216,82 @@ class Vz_alignment_ft extends EE_Fieldtype {
 
 
     /*
-     * Implode arrays and save
+     * Save field
      */
     function save($data)
     {
-        $new_data = ee()->input->post($this->field_name);
-        return implode('|', $new_data);
+        return implode('|', $data);
+    }
+
+    /**
+     * Save Cell
+     */
+    function save_cell($data)
+    {
+        return $this->save($data);
     }
 
 
     // --------------------------------------------------------------------
+
+
+    /*
+     * Convert the stored string back to an array
+     */
+    function pre_process($data)
+    {
+        $data = explode('|', $data);
+        if ( ! is_array($data)) $data = array();
+        return $data;
+    }
+
 
     /**
      * Display Tag
      */
     function replace_tag($field_data, $params=array(), $tagdata=FALSE)
     {
-        if (!$tagdata) // Single tag
+        if ( ! $tagdata) // Single tag
         {
-            return $field_data;
+            $separator = isset($params['separator']) ? $params['separator'] : '-';
+            $separator = str_replace('SPACE', ' ', $separator);
+            $multiple_separator = isset($params['multiple_separator']) ? $params['multiple_separator'] : ' ';
+            $multiple_separator = str_replace('SPACE', ' ', $multiple_separator);
+
+            $return_array = array();
+            foreach ($field_data as $item)
+            {
+                list($horizontal, $vertical) = explode('-', $item);
+                if ($this->settings['direction'] == 'vertical')
+                {
+                    $return_array[] = $vertical;
+                }
+                elseif ($this->settings['direction'] == 'horizontal')
+                {
+                    $return_array[] = $horizontal;
+                }
+                else
+                {
+                    $return_array[] = $horizontal.$separator.$vertical;
+                }
+            }
+
+            return implode($multiple_separator, $return_array);
         }
         else // Tag pair
         {
-            // Get the member info
-            $members = $this->_get_member_names($field_data, $params['orderby'], $params['sort']);
-
-            $variables = array();
-            foreach ($members as $member)
+            $return_array = array();
+            foreach ($field_data as $item)
             {
-                // Prepare the variables for replacement
-                $variables[] = array(
-                    'id' => $member['member_id'],
-                    'group' => $member['group_id'],
-                    'username' => $member['username'],
-                    'screen_name' => $member['screen_name']
+                list($horizontal, $vertical) = explode('-', $item);
+
+                $return_array[] = array(
+                    'horizontal' => $horizontal,
+                    'vertical'   => $vertical
                 );
             }
 
-            $output = ee()->TMPL->parse_variables($tagdata, $variables);
-
-            // Backsapce parameter
-            if (isset($params['backspace']))
-            {
-                $output = substr($output, 0, -$params['backspace']);
-            }
+            $output = ee()->TMPL->parse_variables($tagdata, $return_array);
 
             return $output;
         }
