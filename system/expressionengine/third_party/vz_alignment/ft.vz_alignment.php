@@ -14,7 +14,7 @@ class Vz_alignment_ft extends EE_Fieldtype {
 
     public $info = array(
         'name'      => 'VZ Alignment',
-        'version'   => '1.0.0',
+        'version'   => '0.9.0',
     );
 
     /**
